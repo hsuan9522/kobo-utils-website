@@ -1,13 +1,14 @@
 import { ActionBar, Button, Portal, For } from '@chakra-ui/react'
-import { usePathname, useRouter } from 'next/navigation'
 import { Fragment } from 'react'
-import { routes } from '@/router/routes'
+import { routerInfo } from '@/router'
+import { useLocation, useNavigate } from 'react-router'
 
 export const Menu = () => {
-    const router = useRouter()
-    const pathName = usePathname()
+    const location = useLocation()
+    const navigate = useNavigate()
+    const pathName = location.pathname
 
-    const showMenu = routes.filter((item) => item.path !== pathName)
+    const showMenu = routerInfo.filter((item) => item.path !== pathName)
 
     return (
         <ActionBar.Root open={true} closeOnInteractOutside={false}>
@@ -22,7 +23,7 @@ export const Menu = () => {
                                         variant="outline"
                                         left-icon
                                         size="sm"
-                                        onClick={() => router.push(item.path)}
+                                        onClick={() => navigate(item.path)}
                                     >
                                         <item.icon />
                                         {item.label}
