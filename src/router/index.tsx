@@ -1,8 +1,9 @@
 import { LuCalendarDays, LuNotebook, LuHouse } from 'react-icons/lu'
+import { createBrowserRouter } from 'react-router'
+import BaseLayout from '@/layout/base'
 import Calendar from '@/pages/calendar'
 import Home from '@/pages/home'
 import Notes from '@/pages/notes'
-import { createBrowserRouter } from 'react-router'
 
 export const routerInfo = [
     { label: 'Home', path: '/', icon: LuHouse, element: Home },
@@ -10,11 +11,15 @@ export const routerInfo = [
     { label: 'Notes', path: '/notes', icon: LuNotebook, element: Notes },
 ]
 
-const router = createBrowserRouter(
-    routerInfo.map((item) => ({
-        path: item.path,
-        element: <item.element />,
-    }))
-)
+const router = createBrowserRouter([
+    {
+        path: '/',
+        Component: BaseLayout,
+        children: routerInfo.map((item) => ({
+            path: item.path,
+            element: <item.element />,
+        })),
+    },
+])
 
 export default router
