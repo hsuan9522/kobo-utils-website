@@ -5,9 +5,11 @@ import dayjs from 'dayjs'
 import { Flex, Text, Group, Input, Button, Box, Icon } from '@chakra-ui/react'
 import { useState } from 'react'
 import { LuX } from 'react-icons/lu'
+import initSqlJs from 'sql.js'
 
 const Calendar = () => {
     const [value, setValue] = useState('')
+    const [loading, setLoading] = useState(false)
 
     const events = [
         {
@@ -32,7 +34,14 @@ const Calendar = () => {
         },
     ]
 
-    function renderEventContent(eventInfo: EventContentArg) {
+    const calendarViews = {
+        multiMonthTwoMonth: {
+            type: 'multiMonth',
+            duration: { months: 2 },
+        },
+    }
+
+    const renderEventContent = (eventInfo: EventContentArg) => {
         console.log(eventInfo)
         return (
             <>
@@ -43,11 +52,20 @@ const Calendar = () => {
         )
     }
 
-    const calendarViews = {
-        multiMonthTwoMonth: {
-            type: 'multiMonth',
-            duration: { months: 2 },
-        },
+    const submit = async () => {
+        try {
+            const SQL = await initSqlJs({
+                locateFile: () => value,
+            })
+            const db = new SQL.Database()
+            const stmt = db.prepare('SELECT * FROM Bookmark')
+
+            // Bind values to the parameters and fetch the results of the query
+            // const result = stmt.getAsObject({ ':aval': 1, ':bval': 'world' })
+            // console.log(stmt) // Will print {a:1, b:'world'}
+        } catch (e) {
+            console.log(e)
+        }
     }
 
     return (
@@ -79,13 +97,14 @@ const Calendar = () => {
                     <Input
                         value={value}
                         flex="1"
+                        pr="6"
                         borderColor="gray.300"
                         placeholder="Enter your url"
                         onChange={(e) => {
                             setValue(e.currentTarget.value)
                         }}
                     />
-                    <Button>Submit</Button>
+                    <Button onClick={submit}>Submit</Button>
                 </Group>
             </Box>
             <FullCalendar
