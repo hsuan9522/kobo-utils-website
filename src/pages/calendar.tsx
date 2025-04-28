@@ -92,7 +92,7 @@ const Calendar = () => {
     }
 
     return (
-        <VStack py="4" gap="4" height="90%" px={{ md: '20' }} mx={{ md: '20' }}>
+        <VStack py="4" gap="4" flexGrow="1" overflow="hidden" px={{ xl: '20' }} mx={{ xl: '20' }}>
             <Box w="full">
                 <FileUpload.Root
                     onFileChange={uploadFile}
@@ -111,7 +111,7 @@ const Calendar = () => {
                     <FileUpload.List />
                 </FileUpload.Root>
             </Box>
-            {/* <Box position="relative" width={{ md: '60%', base: '100%' }}>
+            {/* <Box position="relative" w={{ md: '60%', base: '100%' }}>
                 {value && (
                     <Icon
                         position="absolute"
@@ -139,17 +139,20 @@ const Calendar = () => {
                     <Button onClick={submit}>Submit</Button>
                 </Group>
             </Box> */}
-            <FullCalendar
-                height={'100%'}
-                aspectRatio={1.25}
-                contentHeight={'auto'}
-                plugins={[multiMonthPlugin]}
-                initialView="multiMonthTwoMonth"
-                multiMonthMaxColumns={2}
-                views={calendarViews}
-                events={events}
-                eventContent={renderEventContent}
-            />
+            <Box w="full" h="full" flexGrow={1} overflow="hidden">
+                <FullCalendar
+                    initialDate={dayjs().subtract(1, 'month').startOf('month').format('YYYY-MM-DD')}
+                    aspectRatio={1.35}
+                    contentHeight={'auto'}
+                    plugins={[multiMonthPlugin]}
+                    showNonCurrentDates={false}
+                    initialView="multiMonthTwoMonth"
+                    multiMonthMaxColumns={2}
+                    views={calendarViews}
+                    events={events}
+                    eventContent={renderEventContent}
+                />
+            </Box>
         </VStack>
     )
 }

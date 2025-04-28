@@ -1,15 +1,15 @@
 import { Outlet } from 'react-router'
-import { Box } from '@chakra-ui/react'
+import { Flex } from '@chakra-ui/react'
 import { Menu } from '@/components/menu'
 import { HBreadcrumb } from '@/components/breadcrumb'
 
 const BaseLayout = () => {
     return (
-        <Box padding={{ md: '10', base: '4' }} height="100%" width="100%">
+        <Flex padding={{ md: '8', base: '4' }} h="full" w="full" flexDir="column">
             <HBreadcrumb />
             <Outlet />
             <Menu />
-        </Box>
+        </Flex>
     )
 }
 
