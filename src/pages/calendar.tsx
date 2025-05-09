@@ -19,6 +19,7 @@ import { useAppDispatch, useAppSelector } from '@/hooks/useRedux'
 import { dayjs, getTimeFormat, isOneDayDiff } from '@/utils'
 import { Tooltip } from '@/components/ui/tooltip'
 import { StatisticsInfo } from '@/store/statistics.slice'
+import { useEffect, useRef } from 'react'
 
 const Calendar = () => {
     const dispatch = useAppDispatch()
@@ -27,12 +28,26 @@ const Calendar = () => {
     const bgColors = ['#F6D7C8', '#BAE5D5', '#E2D0EB', '#F8EDD1', '#C4DCF2', '#FBD3D7', '#D8E7F5']
     const bdrColors = ['#d15700', '#0a5049', '#542a87', '#cb9800', '#183c8c', '#ab1f1f', '#0277a3']
 
+    const calendarRef = useRef<InstanceType<typeof FullCalendar>>(null)
+
     const calendarViews = {
         multiMonthTwoMonth: {
             type: 'multiMonth',
             duration: { months: 2 },
         },
     }
+
+    useEffect(() => {
+        if (calendarRef.current && events.length) {
+            const lastIndex = events.length - 1
+            const lastReadDate = events[lastIndex].end
+            const showDate = dayjs(lastReadDate)
+                .subtract(1, 'month')
+                .startOf('month')
+                .format('YYYY-MM-DD')
+            calendarRef.current.getApi().gotoDate(showDate)
+        }
+    }, [events])
 
     const uploadFile = async (e: FileUploadFileChangeDetails) => {
         dispatch(startLoading())
@@ -116,6 +131,7 @@ const Calendar = () => {
     }
 
     const renderEventContent = (eventInfo: EventContentArg) => {
+        // 會造成 flushSync was called from inside a lifecycle method...
         return (
             <Tooltip
                 content={`${eventInfo.event.extendedProps.author}《 ${eventInfo.event.title} 》 / ${eventInfo.event.extendedProps.timeText}`}
@@ -186,8 +202,9 @@ const Calendar = () => {
             </Box> */}
             <Box w="full" h="full" flexGrow={1} overflow="hidden">
                 <FullCalendar
+                    ref={calendarRef}
                     initialDate={dayjs().subtract(1, 'month').startOf('month').format('YYYY-MM-DD')}
-                    titleFormat={{ month: 'short' }}
+                    titleFormat={{ month: 'short', year: 'numeric' }}
                     aspectRatio={1.35}
                     contentHeight={'auto'}
                     plugins={[multiMonthPlugin]}
