@@ -14,19 +14,15 @@ import { toaster } from '@/components/ui/toaster'
 import { LuUpload } from 'react-icons/lu'
 import initSqlJs from 'sql.js'
 import { endLoading, startLoading } from '@/store/loading.slice'
-import { setStatistics } from '@/store/statistics.slice'
+import { formatStatistics } from '@/store/statistics.slice'
 import { useAppDispatch, useAppSelector } from '@/hooks/useRedux'
-import { dayjs, getTimeFormat, isOneDayDiff } from '@/utils'
+import { dayjs } from '@/utils'
 import { Tooltip } from '@/components/ui/tooltip'
-import { StatisticsInfo } from '@/store/statistics.slice'
 import { useEffect, useRef } from 'react'
 
 const Calendar = () => {
     const dispatch = useAppDispatch()
     const { data: events } = useAppSelector((state) => state.statistics)
-    //               ['orange',  'yellow',  'green',   'blue',    'cyan',    'purple',  'red']
-    const bgColors = ['#F6D7C8', '#BAE5D5', '#E2D0EB', '#F8EDD1', '#C4DCF2', '#FBD3D7', '#D8E7F5']
-    const bdrColors = ['#d15700', '#0a5049', '#542a87', '#cb9800', '#183c8c', '#ab1f1f', '#0277a3']
 
     const calendarRef = useRef<InstanceType<typeof FullCalendar>>(null)
 
@@ -68,58 +64,7 @@ const Calendar = () => {
                 HAVING TotalMinutesRead >= 1;
             `)
 
-            let colorIndex = 0
-            const bookColors: Record<string, { color: string; border: string }> = {}
-
-            /**
-             * 0: Date
-             * 1: Title
-             * 2: Author
-             * 3: TotalMinutesRead
-             */
-            const data = res[0].values
-                .reduce((acc, curr) => {
-                    const index = acc?.findLastIndex((item) => item.title === curr[1])
-
-                    const current = {
-                        start: curr[0] as string,
-                        title: curr[1] as string,
-                        author: curr[2] as string,
-                        minutes: curr[3] as number,
-                        end: curr[0] as string,
-                        textColor: '#444444',
-                    }
-
-                    if (index !== -1 && isOneDayDiff(acc[index].end, current.start)) {
-                        acc[index] = {
-                            ...acc[index],
-                            minutes: acc[index].minutes + current.minutes,
-                            end: current.start,
-                        }
-                    } else {
-                        if (!bookColors[current.title]) {
-                            bookColors[current.title] = {
-                                color: bgColors[colorIndex],
-                                border: bdrColors[colorIndex],
-                            }
-                            colorIndex = ++colorIndex % bgColors.length
-                        }
-
-                        acc.push({
-                            ...current,
-                            backgroundColor: bookColors[current.title].color,
-                            borderColor: bookColors[current.title].border,
-                        })
-                    }
-                    return acc
-                }, [] as StatisticsInfo[])
-                .map((item) => ({
-                    ...item,
-                    end: dayjs(item.end).add(1, 'day').format('YYYY-MM-DD'),
-                    timeText: getTimeFormat(item.minutes),
-                }))
-
-            dispatch(setStatistics(data))
+            dispatch(formatStatistics(res[0].values))
         } catch (e) {
             toaster.create({
                 title: `讀取失敗 (${e})`,
@@ -137,6 +82,7 @@ const Calendar = () => {
                 content={`${eventInfo.event.extendedProps.author}《 ${eventInfo.event.title} 》 / ${eventInfo.event.extendedProps.timeText}`}
                 showArrow
                 openDelay={100}
+                positioning={{ offset: { mainAxis: 6 } }}
             >
                 <Text textStyle="2xs" lineHeight="1" p="2px" truncate cursor={'default'}>
                     {`${eventInfo.event.title}(${eventInfo.event.extendedProps.timeText})`}
@@ -215,6 +161,7 @@ const Calendar = () => {
                     events={events}
                     eventContent={renderEventContent}
                 />
+                燃油 水溫 充電 手剎 機油
             </Box>
         </VStack>
     )
