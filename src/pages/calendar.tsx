@@ -161,7 +161,6 @@ const Calendar = () => {
                     events={events}
                     eventContent={renderEventContent}
                 />
-                燃油 水溫 充電 手剎 機油
             </Box>
         </VStack>
     )
