@@ -9,6 +9,12 @@ import {
     FileUploadFileChangeDetails,
     HStack,
     VStack,
+    Popover,
+    Portal,
+    Select,
+    Grid,
+    createListCollection,
+    GridItem,
 } from '@chakra-ui/react'
 import { toaster } from '@/components/ui/toaster'
 import { LuUpload } from 'react-icons/lu'
@@ -18,7 +24,24 @@ import { formatStatistics } from '@/store/statistics.slice'
 import { useAppDispatch, useAppSelector } from '@/hooks/useRedux'
 import { dayjs } from '@/utils'
 import { Tooltip } from '@/components/ui/tooltip'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
+
+const TODAY = dayjs()
+const currentYear = TODAY.year().toString()
+const currentMonth = TODAY.month().toString()
+
+const years = createListCollection({
+    items: Array.from({ length: 25 }, (_, i) => {
+        const year = TODAY.subtract(i, 'year').year()
+        return { label: year, value: year.toString() }
+    }),
+})
+
+const months = createListCollection({
+    items: Array.from({ length: 12 }, (_, i) => {
+        return { label: TODAY.month(i).format('MMM'), value: i.toString() }
+    }),
+})
 
 const Calendar = () => {
     const dispatch = useAppDispatch()
@@ -33,6 +56,10 @@ const Calendar = () => {
         },
     }
 
+    const [selectYear, setSelectYear] = useState([currentYear])
+    const [selectMonth, setSelectMonth] = useState([currentMonth])
+    const isInitial = useRef(true)
+
     useEffect(() => {
         if (calendarRef.current && events.length) {
             const lastIndex = events.length - 1
@@ -44,6 +71,21 @@ const Calendar = () => {
             calendarRef.current.getApi().gotoDate(showDate)
         }
     }, [events])
+
+    useEffect(() => {
+        getJumpPosition()
+    }, [calendarRef])
+
+    useEffect(() => {
+        if (isInitial.current) {
+            isInitial.current = false
+            return
+        }
+        const selectDate = dayjs(`${selectYear[0]}-${+selectMonth[0] + 1}-1`)
+            .subtract(1, 'month')
+            .format('YYYY-MM-DD')
+        calendarRef.current?.getApi().gotoDate(selectDate)
+    }, [selectYear, selectMonth])
 
     const uploadFile = async (e: FileUploadFileChangeDetails) => {
         dispatch(startLoading())
@@ -89,6 +131,19 @@ const Calendar = () => {
                 </Text>
             </Tooltip>
         )
+    }
+
+    const [popoverOffset, setPopoverOffset] = useState({ width: 0, height: 0, left: 0, top: 0 })
+    const getJumpPosition = () => {
+        const el = document.querySelector('[title="Jump"]')?.getBoundingClientRect()
+        if (!el) return
+
+        setPopoverOffset({
+            width: el.width,
+            height: el.height,
+            left: el.left,
+            top: el.top,
+        })
     }
 
     return (
@@ -146,10 +201,17 @@ const Calendar = () => {
                     <Button onClick={submit}>Submit</Button>
                 </Group>
             </Box> */}
-            <Box w="full" h="full" flexGrow={1} overflow="hidden">
+            <Box w="full" h="full" flexGrow={1} overflow="hidden" padding={1}>
                 <FullCalendar
                     ref={calendarRef}
-                    initialDate={dayjs().subtract(1, 'month').startOf('month').format('YYYY-MM-DD')}
+                    initialDate={TODAY.subtract(1, 'month').startOf('month').format('YYYY-MM-DD')}
+                    customButtons={{
+                        my: { text: 'Jump' },
+                    }}
+                    headerToolbar={{
+                        right: 'today prev,next my',
+                        left: 'title',
+                    }}
                     titleFormat={{ month: 'short', year: 'numeric' }}
                     aspectRatio={1.35}
                     contentHeight={'auto'}
@@ -161,6 +223,104 @@ const Calendar = () => {
                     events={events}
                     eventContent={renderEventContent}
                 />
+            </Box>
+            <Box
+                position="absolute"
+                w={popoverOffset.width}
+                h={popoverOffset.height}
+                left={popoverOffset.left}
+                top={popoverOffset.top}
+            >
+                <Popover.Root size="xs" closeOnInteractOutside={true}>
+                    <Popover.Trigger asChild>
+                        <Button
+                            w="full"
+                            h="full"
+                            bg="#2c3e50"
+                            fontWeight="normal"
+                            fontFamily="Montserrat"
+                        >
+                            Jump
+                        </Button>
+                    </Popover.Trigger>
+                    <Portal>
+                        <Popover.Positioner>
+                            <Popover.Content>
+                                <Popover.Arrow />
+                                <Popover.Body>
+                                    <Grid templateColumns="repeat(3, 1fr)" gap={2}>
+                                        <GridItem colSpan={1}>
+                                            <Select.Root
+                                                collection={months}
+                                                size="sm"
+                                                value={selectMonth}
+                                                onValueChange={(details) =>
+                                                    setSelectMonth(details.value)
+                                                }
+                                            >
+                                                <Select.HiddenSelect />
+                                                <Select.Control>
+                                                    <Select.Trigger>
+                                                        <Select.ValueText placeholder="Month" />
+                                                    </Select.Trigger>
+                                                    <Select.IndicatorGroup>
+                                                        <Select.Indicator />
+                                                    </Select.IndicatorGroup>
+                                                </Select.Control>
+                                                <Select.Positioner>
+                                                    <Select.Content width="full">
+                                                        {months.items.map((item) => (
+                                                            <Select.Item
+                                                                item={item}
+                                                                key={item.value}
+                                                            >
+                                                                {item.label}
+                                                                <Select.ItemIndicator />
+                                                            </Select.Item>
+                                                        ))}
+                                                    </Select.Content>
+                                                </Select.Positioner>
+                                            </Select.Root>
+                                        </GridItem>
+                                        <GridItem colSpan={2}>
+                                            <Select.Root
+                                                collection={years}
+                                                size="sm"
+                                                value={selectYear}
+                                                onValueChange={(details) =>
+                                                    setSelectYear(details.value)
+                                                }
+                                            >
+                                                <Select.HiddenSelect />
+                                                <Select.Control>
+                                                    <Select.Trigger>
+                                                        <Select.ValueText placeholder="Year" />
+                                                    </Select.Trigger>
+                                                    <Select.IndicatorGroup>
+                                                        <Select.Indicator />
+                                                    </Select.IndicatorGroup>
+                                                </Select.Control>
+                                                <Select.Positioner>
+                                                    <Select.Content width="full">
+                                                        {years.items.map((item) => (
+                                                            <Select.Item
+                                                                item={item}
+                                                                key={item.value}
+                                                            >
+                                                                {item.label}
+                                                                <Select.ItemIndicator />
+                                                            </Select.Item>
+                                                        ))}
+                                                    </Select.Content>
+                                                </Select.Positioner>
+                                            </Select.Root>
+                                        </GridItem>
+                                    </Grid>
+                                </Popover.Body>
+                            </Popover.Content>
+                        </Popover.Positioner>
+                    </Portal>
+                </Popover.Root>
             </Box>
         </VStack>
     )
