@@ -2,36 +2,49 @@ import { dayjs, getTimeFormat, isOneDayDiff } from '@/utils'
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit'
 import initSqlJs from 'sql.js'
 import { endLoading, startLoading } from './loading.slice'
+import { RootState } from '.'
 
-const bgColors = ['#F6D7C8', '#BAE5D5', '#E2D0EB', '#F8EDD1', '#C4DCF2', '#FBD3D7', '#D8E7F5']
-const bdrColors = ['#d15700', '#0a5049', '#542a87', '#cb9800', '#183c8c', '#ab1f1f', '#0277a3']
 export interface StatisticsInfo {
     start: string
     title: string
     author: string
     minutes: number
-    end: string
+    end: string // 因為 fullcalendar 的關係，需要多加一天
     backgroundColor: string
     borderColor: string
 }
 
+export interface BookInfo {
+    title: string
+    author: string
+    totalMinutes: number
+    lastDate: string
+    days: number
+    color: string
+    border: string
+}
+
 interface State {
     data: StatisticsInfo[]
+    books: BookInfo[]
 }
 
 const initialState: State = {
     data: [],
+    books: []
 }
 
-export const formatStatistics = createAsyncThunk(
+export const formatStatistics = createAsyncThunk<State, initSqlJs.SqlValue[][], { state: RootState }>(
     'statistics/format',
-    async (data: initSqlJs.SqlValue[][], { dispatch, rejectWithValue }) => {
+    async (data: initSqlJs.SqlValue[][], { dispatch, rejectWithValue, getState }) => {
+        const bgColors = getState().common.bgColors
+        const bdrColors = getState().common.bdrColors
         try {
             dispatch(startLoading())
             let colorIndex = 0
-            const bookColors: Record<string, { color: string; border: string }> = {}
+            const bookInfo: Record<string, BookInfo> = {}
 
-            return data
+            const events = data
                 .reduce((acc, curr) => {
                     const index = acc?.findLastIndex((item) => item.title === curr[1])
 
@@ -50,6 +63,22 @@ export const formatStatistics = createAsyncThunk(
                         textColor: '#444444',
                     }
 
+                    if (!bookInfo[current.title]) {
+                        bookInfo[current.title] = {
+                            title: current.title,
+                            author: current.author,
+                            totalMinutes: 0,
+                            lastDate: current.end,
+                            days: 0,
+                            color: bgColors[colorIndex],
+                            border: bdrColors[colorIndex],
+                        }
+                        colorIndex = ++colorIndex % bgColors.length
+                    }
+                    bookInfo[current.title].totalMinutes += current.minutes
+                    bookInfo[current.title].lastDate = current.end
+                    bookInfo[current.title].days += 1
+
                     if (index !== -1 && isOneDayDiff(acc[index].end, current.start)) {
                         acc[index] = {
                             ...acc[index],
@@ -57,18 +86,10 @@ export const formatStatistics = createAsyncThunk(
                             end: current.start,
                         }
                     } else {
-                        if (!bookColors[current.title]) {
-                            bookColors[current.title] = {
-                                color: bgColors[colorIndex],
-                                border: bdrColors[colorIndex],
-                            }
-                            colorIndex = ++colorIndex % bgColors.length
-                        }
-
                         acc.push({
                             ...current,
-                            backgroundColor: bookColors[current.title].color,
-                            borderColor: bookColors[current.title].border,
+                            backgroundColor: bookInfo[current.title].color,
+                            borderColor: bookInfo[current.title].border,
                         })
                     }
                     return acc
@@ -78,6 +99,10 @@ export const formatStatistics = createAsyncThunk(
                     end: dayjs(item.end).add(1, 'day').format('YYYY-MM-DD'),
                     timeText: getTimeFormat(item.minutes),
                 }))
+
+            const books: BookInfo[] = Object.values(bookInfo)
+
+            return { data: events, books }
         } catch (e) {
             return rejectWithValue(e)
         } finally {
@@ -98,10 +123,12 @@ const statisticsSlice = createSlice({
     extraReducers: (builder) => {
         builder
             .addCase(formatStatistics.fulfilled, (state, action) => {
-                state.data = action.payload
+                state.data = action.payload.data
+                state.books = action.payload.books
             })
             .addCase(formatStatistics.rejected, (state) => {
                 state.data = []
+                state.books = []
             })
     },
 })
