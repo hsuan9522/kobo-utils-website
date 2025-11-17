@@ -20,7 +20,7 @@ import { toaster } from '@/components/ui/toaster'
 import { LuUpload } from 'react-icons/lu'
 import initSqlJs from 'sql.js'
 import { endLoading, startLoading } from '@/store/loading.slice'
-import { formatStatistics } from '@/store/statistics.slice'
+import { formatStatistics, syncNotes } from '@/store/statistics.slice'
 import { useAppDispatch, useAppSelector } from '@/hooks/useRedux'
 import { dayjs } from '@/utils'
 import { Tooltip } from '@/components/ui/tooltip'
@@ -110,7 +110,16 @@ const Calendar = () => {
                 HAVING TotalMinutesRead >= 1;
             `)
 
-            dispatch(formatStatistics(res[0].values))
+            await dispatch(formatStatistics(res[0].values))
+
+            const notes = db.exec(`
+                SELECT Title, DateCreated, Text, Annotation, Type,
+                strftime( '%Y-%m-%d',DateCreated, 'localtime') as DateString 
+                FROM Bookmark 
+                WHERE Text is NOT NULL OR Type != 'dogear'
+				ORDER BY Title, DateString ASC
+            `)
+            await dispatch(syncNotes(notes[0].values))
         } catch (e) {
             toaster.create({
                 title: `讀取失敗 (${e})`,

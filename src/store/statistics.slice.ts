@@ -3,6 +3,7 @@ import { createAsyncThunk, createSlice } from '@reduxjs/toolkit'
 import initSqlJs from 'sql.js'
 import { endLoading, startLoading } from './loading.slice'
 import { RootState } from '.'
+import { cloneDeep } from 'lodash-es'
 
 export interface StatisticsInfo {
     start: string
@@ -23,7 +24,8 @@ export interface BookInfo {
     days: number
     color: string
     border: string
-    data: { date: string, minutes: number }[]
+    data: { date: string; minutes: number }[]
+    notes: { text: string, annotation: string, date: string, type: string, isoDate: string }[]
 }
 
 interface State {
@@ -52,7 +54,7 @@ export const formatStatistics = createAsyncThunk<State, initSqlJs.SqlValue[][], 
                 .reduce((acc, curr) => {
                     const index = acc?.findLastIndex((item) => item.title === curr[1])
 
-                    /**
+                    /** sqlValue 陣列結構
                      * 0: Date
                      * 1: Title
                      * 2: Author
@@ -78,6 +80,7 @@ export const formatStatistics = createAsyncThunk<State, initSqlJs.SqlValue[][], 
                             color: bgColors[colorIndex],
                             border: bdrColors[colorIndex],
                             data: [],
+                            notes: [],
                         }
                         colorIndex = ++colorIndex % bgColors.length
                     }
@@ -125,6 +128,50 @@ export const formatStatistics = createAsyncThunk<State, initSqlJs.SqlValue[][], 
     }
 )
 
+export const syncNotes = createAsyncThunk<BookInfo[], initSqlJs.SqlValue[][], { state: RootState }>(
+    'statistics/syncNotes',
+    async (data: initSqlJs.SqlValue[][], { dispatch, rejectWithValue, getState }) => {
+        const books = cloneDeep(getState().statistics.books) //因為 state 不能隨意變更，所以要先 deepclone
+        const bookIdMap = getState().statistics.bookIdMap
+
+        try {
+            dispatch(startLoading())
+
+            /** sqlValue 陣列結構
+             * 0: Title
+             * 1: DateCreated( ISO 8601 時間格式)
+             * 2: Text(劃線內容)
+             * 3: Annotation(筆記內容)
+             * 4: Type
+             * 5: DateString(1 轉換為當地日期字串)
+             */
+            data.forEach((item) => {
+                const title = item[0] as string
+                const id = bookIdMap[title]
+
+                if (books[id]) {
+                    if (!books[id].notes) {
+                        books[id].notes = []
+                    }
+
+                    books[id].notes.push({
+                        text: item[2] as string,
+                        annotation: item[3] as string,
+                        date: item[5] as string,
+                        type: item[4] as string,
+                        isoDate: item[1] as string,
+                    })
+                }
+            })
+            return books
+        } catch (e) {
+            return rejectWithValue(e)
+        } finally {
+            dispatch(endLoading())
+        }
+    }
+)
+
 const statisticsSlice = createSlice({
     name: 'statistics',
     initialState,
@@ -145,6 +192,9 @@ const statisticsSlice = createSlice({
                 state.data = []
                 state.books = []
                 state.bookIdMap = {}
+            })
+            .addCase(syncNotes.fulfilled, (state, action) => {
+                state.books = action.payload
             })
     },
 })
