@@ -5,9 +5,6 @@ import {
     Text,
     Button,
     Box,
-    FileUpload,
-    FileUploadFileChangeDetails,
-    HStack,
     VStack,
     Popover,
     Portal,
@@ -16,16 +13,13 @@ import {
     createListCollection,
     GridItem,
 } from '@chakra-ui/react'
-import { toaster } from '@/components/ui/toaster'
-import { LuUpload } from 'react-icons/lu'
-import initSqlJs from 'sql.js'
-import { endLoading, startLoading } from '@/store/loading.slice'
-import { formatStatistics, syncNotes } from '@/store/statistics.slice'
-import { useAppDispatch, useAppSelector } from '@/hooks/useRedux'
+
+import { useAppSelector } from '@/hooks/useRedux'
 import { dayjs } from '@/utils'
 import { Tooltip } from '@/components/ui/tooltip'
 import { useEffect, useRef, useState } from 'react'
 import { BookDrawer } from '@/components/bookDrawer'
+import { UploadField } from '@/components/uploadField'
 
 const TODAY = dayjs()
 const currentYear = TODAY.year().toString()
@@ -45,7 +39,6 @@ const months = createListCollection({
 })
 
 const Calendar = () => {
-    const dispatch = useAppDispatch()
     const { data: events } = useAppSelector((state) => state.statistics)
 
     const calendarRef = useRef<InstanceType<typeof FullCalendar>>(null)
@@ -89,45 +82,6 @@ const Calendar = () => {
             .format('YYYY-MM-DD')
         calendarRef.current?.getApi().gotoDate(selectDate)
     }, [selectYear, selectMonth])
-
-    const uploadFile = async (e: FileUploadFileChangeDetails) => {
-        dispatch(startLoading())
-        try {
-            const SQL = await initSqlJs({
-                locateFile: (file) => `https://sql.js.org/dist/${file}`,
-            })
-            const file = e.acceptedFiles[0]
-            const arrayBuffer = await file.arrayBuffer()
-            const unitArray = new Uint8Array(arrayBuffer)
-
-            const db = new SQL.Database(unitArray)
-            const res = db.exec(`
-                SELECT Date, Title, Author,
-                CAST(printf('%.1f', SUM(ReadingTime) / 60.0) AS REAL) AS TotalMinutesRead
-                FROM Analytics
-                GROUP BY Date, Title
-                HAVING TotalMinutesRead >= 1;
-            `)
-
-            await dispatch(formatStatistics(res[0].values))
-
-            const notes = db.exec(`
-                SELECT Title, DateCreated, Text, Annotation, Type,
-                strftime( '%Y-%m-%d',DateCreated, 'localtime') as DateString 
-                FROM Bookmark 
-                WHERE Text is NOT NULL OR Type != 'dogear'
-				ORDER BY Title, DateString ASC
-            `)
-            await dispatch(syncNotes(notes[0].values))
-        } catch (e) {
-            toaster.create({
-                title: `讀取失敗 (${e})`,
-                type: 'error',
-            })
-        } finally {
-            dispatch(endLoading())
-        }
-    }
 
     const renderEventContent = (eventInfo: EventContentArg) => {
         // 會造成 flushSync was called from inside a lifecycle method...
@@ -178,22 +132,7 @@ const Calendar = () => {
             mx={{ xl: '20' }}
         >
             <Box w="full">
-                <FileUpload.Root
-                    onFileChange={uploadFile}
-                    accept={'.sqlite'}
-                    flexDirection="row"
-                    alignItems="center"
-                >
-                    <FileUpload.HiddenInput />
-                    <FileUpload.Trigger asChild>
-                        <HStack h="54px">
-                            <Button variant="outline" size="sm" borderColor="gray.300">
-                                <LuUpload /> Upload file
-                            </Button>
-                        </HStack>
-                    </FileUpload.Trigger>
-                    <FileUpload.List />
-                </FileUpload.Root>
+                <UploadField></UploadField>
                 {selectedTitle && (
                     <BookDrawer
                         open={openDrawer}
