@@ -4,6 +4,7 @@ import initSqlJs from 'sql.js'
 import { endLoading, startLoading } from './loading.slice'
 import { RootState } from '.'
 import { cloneDeep } from 'lodash-es'
+import { NoteType } from '@/types/enums'
 
 export interface StatisticsInfo {
     start: string
@@ -13,6 +14,14 @@ export interface StatisticsInfo {
     end: string // 因為 fullcalendar 的關係，需要多加一天
     backgroundColor: string
     borderColor: string
+}
+
+export interface NoteInfo {
+    text: string
+    annotation: string
+    date: string
+    type: NoteType
+    isoDate: string
 }
 
 export interface BookInfo {
@@ -25,7 +34,7 @@ export interface BookInfo {
     color: string
     border: string
     data: { date: string; minutes: number }[]
-    notes: { text: string, annotation: string, date: string, type: string, isoDate: string }[]
+    notes: NoteInfo[]
 }
 
 interface State {
@@ -158,7 +167,7 @@ export const syncNotes = createAsyncThunk<BookInfo[], initSqlJs.SqlValue[][], { 
                         text: item[2] as string,
                         annotation: item[3] as string,
                         date: item[5] as string,
-                        type: item[4] as string,
+                        type: item[4] as NoteType,
                         isoDate: item[1] as string,
                     })
                 }
